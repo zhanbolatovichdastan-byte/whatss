@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Clone</title>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#ece5dd}
+.container{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+width:280px;
+background:#075e54;
+color:#fff;
+flex-shrink:0;
+}
+.sidebar h2{padding:20px;text-align:center}
+.contact{
+display:flex;
+align-items:center;
+padding:10px 20px;
+cursor:pointer;
+}
+.contact img{
+width:40px;
+height:40px;
+border-radius:50%;
+margin-right:10px;
+}
+.contact:hover{background:#128c7e}
+
+/* CHAT */
+.chat{
+flex:1;
+display:flex;
+flex-direction:column;
+background:#dadada;
+}
+.chat-header{
+padding:10px 15px;
+background:#ededed;
+display:flex;
+align-items:center;
+gap:10px;
+}
+.back{
+display:none;
+cursor:pointer;
+font-size:18px;
+}
+.status{font-size:12px;color:green}
+
+.messages{
+flex:1;
+padding:15px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+}
+
+.message-container{
+display:flex;
+margin-bottom:10px;
+align-items:flex-end;
+}
+.message{
+max-width:75%;
+padding:10px;
+border-radius:8px;
+}
+.sent{background:#dcf8c6}
+.received{background:#fff}
+.avatar{
+width:32px;
+height:32px;
+border-radius:50%;
+margin:0 8px;
+}
+.time{
+font-size:10px;
+color:gray;
+display:block;
+text-align:right;
+}
+
+/* INPUT */
+.input-area{
+display:flex;
+gap:5px;
+padding:8px;
+background:#f0f0f0;
+align-items:center;
+}
+.input-area input[type=text]{
+flex:1;
+padding:10px;
+border-radius:20px;
+border:1px solid #ccc;
+}
+.input-area button{
+width:38px;
+height:38px;
+border:none;
+border-radius:50%;
+cursor:pointer;
+font-size:16px;
+}
+.send{background:#25d366;color:#fff}
+
+/* 📱 MOBILE */
+@media(max-width:768px){
+.container{flex-direction:column}
+.sidebar{
+width:100%;
+height:100vh;
+}
+.chat{
+display:none;
+height:100vh;
+}
+.chat.active{display:flex}
+.sidebar.hide{display:none}
+.back{display:block}
+}
+
+
+.chat-header button{
+border:none;
+background:none;
+font-size:18px;
+cursor:pointer;
+}
+
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+<h2>WhatsApp</h2>
+
+<div class="contact" onclick="openChat('Нургиса')">
+<img src="file:///C:/Users/PC306.9/Downloads/6357ee3a7e5e16b8a058278e9efaa869.jpeg">Нургиса
+</div>
+
+<div class="contact" onclick="openChat('Улыкбек')">
+<img src="file:///C:/Users/PC306.9/Downloads/0f317c62e0adf92d8e45cc270b503b75%20(1).jpg">Улыкбек
+</div>
+
+<div class="contact" onclick="openChat('Жарас')">
+<img src="file:///C:/Users/PC306.9/Downloads/close-up-portrait-tiger_1048944-9140467.avif">Жарас
+</div>
+</div>
+
+<!-- CHAT -->
+<div class="chat" id="chat">
+<div class="chat-header">
+<span class="back" onclick="goBack()">⬅</span>
+
+<div>
+<b id="chatName">Чат</b><br>
+<span class="status" id="status">онлайн</span>
+</div>
+
+<div style="margin-left:auto;display:flex;gap:10px">
+<button onclick="toggleDark()">🌙</button>
+<button onclick="clearChat()">🗑</button>
+</div>
+</div>
+
+
+<div class="messages" id="messages"></div>
+
+<div class="input-area">
+<select id="user">
+<option value="me">Мен</option>
+<option value="friend">Екінші</option>
+<option value="third">Үшінші</option>
+</select>
+
+<input type="text" id="text" placeholder="Хабарлама..."
+onkeypress="if(event.key==='Enter')sendText()" oninput="typing()">
+
+<input type="file" id="file" accept="image/*" hidden>
+
+<button onclick="file.click()">📎</button>
+<button onclick="sendLocation()">📍</button>
+<button onclick="recordVoice()">🎤</button>
+<button onclick="addEmoji()">😊</button>
+<button class="send" onclick="sendText()">➤</button>
+</div>
+</div>
+
+</div>
+
+<script>
+let chatNameEl=document.getElementById("chatName");
+let messages=document.getElementById("messages");
+let sidebar=document.getElementById("sidebar");
+let chatBox=document.getElementById("chat");
+let currentChat=null;
+let mediaRecorder,chunks=[];
+
+const avatars={
+me:"file:///C:/Users/PC306.9/Downloads/close-up-portrait-tiger_1048944-9140467.avif",
+friend:"file:///C:/Users/PC306.9/Downloads/0f317c62e0adf92d8e45cc270b503b75%20(1).jpg",
+third:"file:///C:/Users/PC306.9/Downloads/6357ee3a7e5e16b8a058278e9efaa869.jpeg"
+};
+
+function openChat(name){
+currentChat=name;
+chatNameEl.innerText=name;
+messages.innerHTML=localStorage.getItem("chat_"+name)||"";
+sidebar.classList.add("hide");
+chatBox.classList.add("active");
+}
+
+function goBack(){
+chatBox.classList.remove("active");
+sidebar.classList.remove("hide");
+}
+
+function addMessage(html,user){
+let box=document.createElement("div");
+box.className="message-container";
+let msg=document.createElement("div");
+msg.className="message "+(user==="me"?"sent":"received");
+msg.innerHTML=html+`<span class="time">${new Date().toLocaleTimeString().slice(0,5)}</span>`;
+let av=document.createElement("img");
+av.src=avatars[user];
+av.className="avatar";
+user==="me"?box.append(msg,av):box.append(av,msg);
+messages.appendChild(box);
+localStorage.setItem("chat_"+currentChat,messages.innerHTML);
+messages.scrollTop=messages.scrollHeight;
+}
+
+function sendText(){
+if(!currentChat||!text.value.trim())return;
+addMessage(text.value,user.value);
+text.value="";
+}
+
+file.onchange=()=>{
+let r=new FileReader();
+r.onload=e=>addMessage(`<img src="${e.target.result}" style="max-width:200px">`,user.value);
+r.readAsDataURL(file.files[0]);
+}
+
+function sendLocation(){
+navigator.geolocation.getCurrentPosition(p=>{
+addMessage(`<a target="_blank" href="https://maps.google.com/?q=${p.coords.latitude},${p.coords.longitude}">📍 Локация</a>`,user.value);
+});
+}
+
+function recordVoice(){
+navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{
+mediaRecorder=new MediaRecorder(s);
+mediaRecorder.start();
+chunks=[];
+mediaRecorder.ondataavailable=e=>chunks.push(e.data);
+setTimeout(()=>mediaRecorder.stop(),3000);
+mediaRecorder.onstop=()=>{
+let blob=new Blob(chunks,{type:"audio/ogg"});
+let url=URL.createObjectURL(blob);
+addMessage(`<audio controls src="${url}"></audio>`,user.value);
+};
+});
+}
+
+function addEmoji(){ text.value+="😊"; }
+let typingTimer;
+
+function typing(){
+    let user = document.getElementById("user").value;
+
+    if(user !== "me"){
+        status.innerText = user === "friend"
+            ? "Екінші адам жазып жатыр..."
+            : "Үшінші адам жазып жатыр...";
+    }
+
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(()=>{
+        status.innerText = "онлайн";
+    }, 1500);
+}
+
+</script>
+
+</body>
+</html>
